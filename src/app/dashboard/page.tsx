@@ -1,6 +1,7 @@
 import { UserButton, auth } from "@clerk/nextjs";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { LogoutButton } from "@/components/LogoutButton";
 
 export default async function DashboardPage() {
   const { userId, sessionId } = await auth();
@@ -53,12 +54,15 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          <Link
-            href="/api/auth/logout"
-            className="mt-6 inline-block px-6 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition"
-          >
-            Sign Out
-          </Link>
+          <div className="mt-8 flex gap-4">
+            <Link
+              href="/"
+              className="px-6 py-3 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600 transition"
+            >
+              Back to Home
+            </Link>
+            <LogoutButton />
+          </div>
         </div>
       </div>
     </div>
