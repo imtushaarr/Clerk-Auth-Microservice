@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "5173:5173"
+    environment:
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - CLERK_WEBHOOK_SECRET=${CLERK_WEBHOOK_SECRET}
+      - TESTMAIL_NAMESPACE=${TESTMAIL_NAMESPACE}
+      - TESTMAIL_API_KEY=${TESTMAIL_API_KEY}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    restart: unless-stopped
