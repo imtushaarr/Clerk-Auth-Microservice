@@ -1,5 +1,7 @@
 import { SignUp } from "@clerk/nextjs";
+import Link from "next/link";
 import { Suspense } from "react";
+import { LogoutButton } from "@/components/LogoutButton";
 
 export default function SignUpPage() {
   return (
@@ -12,6 +14,17 @@ export default function SignUpPage() {
         <Suspense fallback={<div>Loading...</div>}>
           <SignUp />
         </Suspense>
+        <div className="mt-6 flex gap-3">
+          <Link
+            href="/"
+            className="flex-1 px-4 py-2 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600 transition text-center"
+          >
+            Back
+          </Link>
+          <div className="flex-1">
+            <LogoutButton />
+          </div>
+        </div>
       </div>
     </div>
   );
