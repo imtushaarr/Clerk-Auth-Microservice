@@ -9,7 +9,11 @@ A modern authentication microservice built with Next.js and Clerk, featuring ema
 - ✅ **Webhook Integration** - Real-time events from Clerk
 - ✅ **User Dashboard** - Protected dashboard for authenticated users
 - ✅ **Sign In & Sign Up** - Beautiful authentication pages
-- ✅ **API Endpoints** - Health checks and auth status endpoints
+- ✅ **Public REST API** - RESTful endpoints for external integration
+- ✅ **Rate Limiting** - Built-in rate limiting for security
+- ✅ **CORS Support** - Cross-origin request handling
+- ✅ **Input Validation** - Comprehensive request validation
+- ✅ **API Documentation** - OpenAPI/Swagger spec included
 
 ## Tech Stack
 
@@ -194,6 +198,99 @@ Ensure:
 - Environment variables are configured
 - HTTPS is enabled (required by Clerk)
 - Webhook URL is updated to production
+
+## 🔌 Public API Integration
+
+This microservice exposes a comprehensive RESTful API for external integration with other services and applications.
+
+### Quick API Examples
+
+#### Register User
+```bash
+curl -X POST http://localhost:5173/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "SecurePass123!",
+    "firstName": "John",
+    "lastName": "Doe"
+  }'
+```
+
+#### Login
+```bash
+curl -X POST http://localhost:5173/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "SecurePass123!"
+  }'
+```
+
+#### Get Profile (Authenticated)
+```bash
+curl -X GET http://localhost:5173/api/auth/profile \
+  -H "Authorization: Bearer <token_from_login>"
+```
+
+### Available Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---|
+| `POST` | `/api/auth/register` | Register new user | ❌ |
+| `POST` | `/api/auth/login` | User login | ❌ |
+| `POST` | `/api/auth/verify` | Verify email/OTP | ❌ |
+| `POST` | `/api/auth/refresh` | Refresh token | ✅ |
+| `GET` | `/api/auth/profile` | Get user profile | ✅ |
+| `GET` | `/api/health` | Health check | ❌ |
+
+### API Documentation
+
+Complete API documentation is available in [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)
+
+**OpenAPI Spec**: Access at `GET /api/docs/openapi.json`
+
+### Features
+
+- **Rate Limiting**: 5 auth attempts per 15 minutes, 100 general requests per minute
+- **CORS Enabled**: Works with localhost and external origins
+- **Input Validation**: Strong password requirements, email validation
+- **Error Handling**: Consistent error responses with detailed codes
+- **Security Headers**: XSS protection, Content-Type enforcement, HSTS
+
+### Integration Example (JavaScript)
+
+```javascript
+// Register
+const registerResponse = await fetch('http://localhost:5173/api/auth/register', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    password: 'SecurePass123!',
+    firstName: 'John',
+    lastName: 'Doe'
+  })
+});
+
+// Login
+const loginResponse = await fetch('http://localhost:5173/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    password: 'SecurePass123!'
+  })
+});
+const { data } = await loginResponse.json();
+const token = data.token;
+
+// Get Profile
+const profileResponse = await fetch('http://localhost:5173/api/auth/profile', {
+  headers: { Authorization: `Bearer ${token}` }
+});
+const profile = await profileResponse.json();
+```
 
 ## License
 
