@@ -11,7 +11,5 @@ services:
       - CLERK_WEBHOOK_SECRET=${CLERK_WEBHOOK_SECRET}
       - TESTMAIL_NAMESPACE=${TESTMAIL_NAMESPACE}
       - TESTMAIL_API_KEY=${TESTMAIL_API_KEY}
-    volumes:
-      - .:/app
-      - /app/node_modules
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:5173}
     restart: unless-stopped

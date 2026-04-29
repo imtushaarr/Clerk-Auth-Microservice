@@ -1,35 +1,24 @@
 import { NextResponse } from "next/server";
 import { sendSignupWelcomeEmail } from "@/lib/email";
+import { apiError, withErrorHandler } from "@/lib/api-error";
 
-export async function POST(req: Request) {
-  try {
-    const { email, firstName } = await req.json();
+async function handler(req: Request): Promise<NextResponse> {
+  const { email, firstName } = await req.json();
 
-    if (!email) {
-      return NextResponse.json(
-        { error: "Email is required" },
-        { status: 400 }
-      );
-    }
+  if (!email) {
+    return apiError("VALIDATION_ERROR", "email is required");
+  }
 
-    const success = await sendSignupWelcomeEmail(email, firstName);
+  const success = await sendSignupWelcomeEmail(email, firstName);
 
-    if (success) {
-      return NextResponse.json(
-        { message: "Welcome email sent successfully" },
-        { status: 200 }
-      );
-    } else {
-      return NextResponse.json(
-        { error: "Failed to send welcome email" },
-        { status: 500 }
-      );
-    }
-  } catch (error) {
-    console.error("Error in email endpoint:", error);
+  if (success) {
     return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+      { message: "Welcome email sent successfully" },
+      { status: 200 }
     );
   }
+
+  return apiError("INTERNAL_ERROR", "Failed to send welcome email");
 }
+
+export const POST = withErrorHandler(handler as (...args: unknown[]) => Promise<NextResponse>) as typeof handler;

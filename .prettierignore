@@ -1,0 +1,9 @@
+# Files and directories ignored by Prettier
+node_modules
+.next
+dist
+out
+build
+coverage
+*.min.js
+package-lock.json

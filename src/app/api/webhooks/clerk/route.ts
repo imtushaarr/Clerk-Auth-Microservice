@@ -2,12 +2,14 @@ import { Webhook } from "svix";
 import { headers } from "next/headers";
 import { WebhookEvent } from "@clerk/nextjs/server";
 import { sendSignupWelcomeEmail } from "@/lib/email";
+import { apiError, withErrorHandler } from "@/lib/api-error";
+import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
-export async function POST(req: Request) {
+async function handleWebhook(req: Request): Promise<Response> {
   const SIGNING_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
   if (!SIGNING_SECRET) {
-    throw new Error("Error: Please add CLERK_WEBHOOK_SECRET from Clerk Dashboard to .env or .env.local");
+    return apiError("INTERNAL_ERROR", "Webhook secret is not configured");
   }
 
   const wh = new Webhook(SIGNING_SECRET);
@@ -18,9 +20,7 @@ export async function POST(req: Request) {
   const svix_signature = headerPayload.get("svix-signature");
 
   if (!svix_id || !svix_timestamp || !svix_signature) {
-    return new Response("Error: Missing Svix headers", {
-      status: 400,
-    });
+    return apiError("BAD_REQUEST", "Missing required Svix headers");
   }
 
   const body = await req.text();
@@ -33,10 +33,7 @@ export async function POST(req: Request) {
       "svix-signature": svix_signature,
     }) as WebhookEvent;
   } catch (err) {
-    console.error("Error: Could not verify webhook:", err);
-    return new Response("Error: Unauthorized", {
-      status: 401,
-    });
+    return apiError("UNAUTHORIZED", "Webhook signature verification failed", err);
   }
 
   const eventType = evt.type;
@@ -60,3 +57,9 @@ export async function POST(req: Request) {
 
   return new Response("Webhook received", { status: 200 });
 }
+
+export const POST = withRateLimit(
+  withErrorHandler(handleWebhook as (...args: unknown[]) => Promise<Response>),
+  RATE_LIMITS.webhook,
+  "webhook"
+) as typeof handleWebhook;
