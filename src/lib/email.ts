@@ -1,38 +1,61 @@
 import axios from "axios";
 
+const TESTMAIL_TIMEOUT_MS = Number(process.env.TESTMAIL_TIMEOUT) || 10000;
+const MAX_RETRY_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 1000;
+
 interface TestmailEmailParams {
   to: string;
   subject: string;
   html: string;
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const sendTestmailNotification = async (
   params: TestmailEmailParams
 ): Promise<boolean> => {
-  try {
-    const namespace = process.env.TESTMAIL_NAMESPACE;
-    const apiKey = process.env.TESTMAIL_API_KEY;
+  const namespace = process.env.TESTMAIL_NAMESPACE;
+  const apiKey = process.env.TESTMAIL_API_KEY;
 
-    if (!namespace || !apiKey) {
-      console.error("Testmail configuration missing");
-      return false;
-    }
-
-    const response = await axios.post(
-      `https://api.testmail.app/api/json?namespace=${namespace}&key=${apiKey}`,
-      {
-        to: params.to,
-        subject: params.subject,
-        html: params.html,
-      }
-    );
-
-    console.log("Email sent successfully:", response.data);
-    return response.status === 200;
-  } catch (error) {
-    console.error("Error sending email via Testmail:", error);
+  if (!namespace || !apiKey) {
+    console.error("Testmail configuration missing: TESTMAIL_NAMESPACE and TESTMAIL_API_KEY are required");
     return false;
   }
+
+  for (let attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+    try {
+      const response = await axios.post(
+        `https://api.testmail.app/api/json?namespace=${namespace}&key=${apiKey}`,
+        {
+          to: params.to,
+          subject: params.subject,
+          html: params.html,
+        },
+        { timeout: TESTMAIL_TIMEOUT_MS }
+      );
+
+      console.log("Email sent successfully:", response.data);
+      return response.status === 200;
+    } catch (error) {
+      const isLastAttempt = attempt === MAX_RETRY_ATTEMPTS;
+      if (isLastAttempt) {
+        console.error(
+          `Error sending email via Testmail after ${MAX_RETRY_ATTEMPTS} attempts:`,
+          { to: params.to, subject: params.subject, error }
+        );
+        return false;
+      }
+      const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+      console.warn(
+        `Email send attempt ${attempt} failed, retrying in ${delay}ms:`,
+        error
+      );
+      await sleep(delay);
+    }
+  }
+
+  return false;
 };
 
 export const sendSignupWelcomeEmail = async (

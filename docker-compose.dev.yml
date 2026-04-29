@@ -1,7 +1,7 @@
 version: '3.8'
 
-# Development configuration: use docker-compose.dev.yml for local development.
-# This file is the production configuration — no source code volume mounts.
+# Development configuration with hot-reload support.
+# Use: docker-compose -f docker-compose.dev.yml up
 
 services:
   app:
@@ -13,17 +13,16 @@ services:
     env_file:
       - .env.local
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
       - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
       - CLERK_WEBHOOK_SECRET=${CLERK_WEBHOOK_SECRET}
       - TESTMAIL_NAMESPACE=${TESTMAIL_NAMESPACE}
       - TESTMAIL_API_KEY=${TESTMAIL_API_KEY}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+    volumes:
+      # Only mount source code — not .env files or node_modules
+      - ./src:/app/src:ro
+      - ./public:/app/public:ro
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+    command: npm run dev
