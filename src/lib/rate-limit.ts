@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getConfig } from "./config";
 
 interface RateLimitConfig {
-  windowMs: number; // Time window in milliseconds
-  maxRequests: number; // Max requests per window
+  windowMs: number;
+  maxRequests: number;
   message?: string;
 }
 
@@ -15,12 +16,24 @@ interface RateLimitStore {
 
 const store: RateLimitStore = {};
 
-// Default configurations
-export const RATE_LIMITS = {
-  auth: { windowMs: 15 * 60 * 1000, maxRequests: 5 }, // 5 attempts per 15 minutes
-  general: { windowMs: 60 * 1000, maxRequests: 100 }, // 100 requests per minute
-  api: { windowMs: 60 * 1000, maxRequests: 50 }, // 50 requests per minute
-};
+// Rate limit configurations from environment
+export function getRateLimitConfigs() {
+  const config = getConfig();
+  return {
+    auth: {
+      windowMs: config.api.rateLimitAuthWindow,
+      maxRequests: config.api.rateLimitAuthMax,
+    },
+    general: {
+      windowMs: config.api.rateLimitGeneralWindow,
+      maxRequests: config.api.rateLimitGeneralMax,
+    },
+    api: {
+      windowMs: config.api.rateLimitGeneralWindow,
+      maxRequests: config.api.rateLimitGeneralMax,
+    },
+  };
+}
 
 export function getRateLimitKey(req: NextRequest): string {
   const ip =
@@ -63,16 +76,17 @@ export async function checkRateLimit(
 
 export async function withRateLimit(
   req: NextRequest,
-  config: RateLimitConfig = RATE_LIMITS.general
+  config?: RateLimitConfig
 ) {
+  const finalConfig = config || getRateLimitConfigs().general;
   const key = getRateLimitKey(req);
-  const { allowed, remaining, resetTime } = await checkRateLimit(key, config);
+  const { allowed, remaining, resetTime } = await checkRateLimit(key, finalConfig);
 
   if (!allowed) {
     return NextResponse.json(
       {
         success: false,
-        error: config.message || "Rate limit exceeded",
+        error: "Rate limit exceeded",
         code: "RATE_LIMIT_EXCEEDED",
         retryAfter: Math.ceil((resetTime - Date.now()) / 1000),
         timestamp: new Date().toISOString(),
@@ -81,7 +95,7 @@ export async function withRateLimit(
         status: 429,
         headers: {
           "Retry-After": Math.ceil((resetTime - Date.now()) / 1000).toString(),
-          "X-RateLimit-Limit": config.maxRequests.toString(),
+          "X-RateLimit-Limit": finalConfig.maxRequests.toString(),
           "X-RateLimit-Remaining": "0",
           "X-RateLimit-Reset": (resetTime / 1000).toString(),
         },
@@ -92,7 +106,7 @@ export async function withRateLimit(
   return {
     allowed: true,
     headers: {
-      "X-RateLimit-Limit": config.maxRequests.toString(),
+      "X-RateLimit-Limit": finalConfig.maxRequests.toString(),
       "X-RateLimit-Remaining": remaining.toString(),
       "X-RateLimit-Reset": (resetTime / 1000).toString(),
     },
