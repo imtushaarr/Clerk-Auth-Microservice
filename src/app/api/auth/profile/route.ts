@@ -4,7 +4,7 @@ import {
   successResponse,
   errorResponse,
 } from "@/lib/api-utils";
-import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { withRateLimit, getRateLimitConfigs } from "@/lib/rate-limit";
 import { handleCorsPreFlight, addCorsHeaders } from "@/lib/cors";
 
 /**
@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
 
   try {
     // Rate limiting
-    const rateLimitResult = await withRateLimit(request, RATE_LIMITS.general);
+    const { general: generalLimitConfig } = getRateLimitConfigs();
+    const rateLimitResult = await withRateLimit(request, generalLimitConfig);
     if ("status" in rateLimitResult) {
       return rateLimitResult;
     }
