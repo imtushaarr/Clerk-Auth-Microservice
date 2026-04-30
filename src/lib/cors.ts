@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getConfig } from "./config";
 
 export interface CorsOptions {
   allowedOrigins?: string[];
@@ -9,65 +10,51 @@ export interface CorsOptions {
   maxAge?: number;
 }
 
-const DEFAULT_CORS_OPTIONS: CorsOptions = {
-  allowedOrigins: [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:8000",
-    process.env.NEXT_PUBLIC_APP_URL || "",
-  ].filter(Boolean),
-  allowedMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "Accept",
-    "Origin",
-    "X-Requested-With",
-    "X-API-Key",
-  ],
-  exposedHeaders: [
-    "X-RateLimit-Limit",
-    "X-RateLimit-Remaining",
-    "X-RateLimit-Reset",
-    "Content-Length",
-    "X-Request-Id",
-  ],
-  credentials: true,
-  maxAge: 86400, // 24 hours
-};
-
 export function getCorsHeaders(
   origin: string | null,
-  options: CorsOptions = DEFAULT_CORS_OPTIONS
+  options?: CorsOptions
 ): Record<string, string> {
-  const allowedOrigins = options.allowedOrigins || DEFAULT_CORS_OPTIONS.allowedOrigins || [];
+  const config = getConfig();
+  const defaultOrigins = options?.allowedOrigins || config.api.corsOrigins;
 
   const headers: Record<string, string> = {};
 
   // Check if origin is allowed
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && defaultOrigins.includes(origin)) {
     headers["Access-Control-Allow-Origin"] = origin;
-  } else if (allowedOrigins.includes("*")) {
+  } else if (defaultOrigins.includes("*")) {
     headers["Access-Control-Allow-Origin"] = "*";
   }
 
   headers["Access-Control-Allow-Methods"] =
-    (options.allowedMethods || DEFAULT_CORS_OPTIONS.allowedMethods)?.join(",") || "*";
+    (options?.allowedMethods || ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"])?.join(
+      ","
+    ) || "*";
 
   headers["Access-Control-Allow-Headers"] =
-    (options.allowedHeaders || DEFAULT_CORS_OPTIONS.allowedHeaders)?.join(",") ||
-    "Content-Type, Authorization";
+    (options?.allowedHeaders || [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+      "Origin",
+      "X-Requested-With",
+      "X-API-Key",
+    ])?.join(",") || "Content-Type, Authorization";
 
   headers["Access-Control-Expose-Headers"] =
-    (options.exposedHeaders || DEFAULT_CORS_OPTIONS.exposedHeaders)?.join(",") || "";
+    (options?.exposedHeaders || [
+      "X-RateLimit-Limit",
+      "X-RateLimit-Remaining",
+      "X-RateLimit-Reset",
+      "Content-Length",
+      "X-Request-Id",
+    ])?.join(",") || "";
 
-  if (options.credentials !== false) {
+  if (options?.credentials !== false) {
     headers["Access-Control-Allow-Credentials"] = "true";
   }
 
-  headers["Access-Control-Max-Age"] = (
-    options.maxAge || DEFAULT_CORS_OPTIONS.maxAge || 86400
-  ).toString();
+  headers["Access-Control-Max-Age"] = (options?.maxAge || 86400).toString();
 
   // Security headers
   headers["X-Content-Type-Options"] = "nosniff";

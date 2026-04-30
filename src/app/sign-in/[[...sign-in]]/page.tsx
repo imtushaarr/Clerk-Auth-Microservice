@@ -12,7 +12,7 @@ export default function SignInPage() {
           <p className="text-gray-600">Sign in to your account</p>
         </div>
         <Suspense fallback={<div>Loading...</div>}>
-          <SignIn />
+          <SignIn redirectUrl="/dashboard" />
         </Suspense>
         <div className="mt-6 flex gap-3">
           <Link

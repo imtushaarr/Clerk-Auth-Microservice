@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getConfig } from "./config";
 
 interface TestmailEmailParams {
   to: string;
@@ -10,16 +11,21 @@ export const sendTestmailNotification = async (
   params: TestmailEmailParams
 ): Promise<boolean> => {
   try {
-    const namespace = process.env.TESTMAIL_NAMESPACE;
-    const apiKey = process.env.TESTMAIL_API_KEY;
+    const config = getConfig();
+    const { namespace, apiKey, apiUrl, enabled } = config.testmail;
+
+    if (!enabled) {
+      console.warn("Testmail is disabled in configuration");
+      return false;
+    }
 
     if (!namespace || !apiKey) {
-      console.error("Testmail configuration missing");
+      console.error("Testmail configuration missing: namespace or apiKey");
       return false;
     }
 
     const response = await axios.post(
-      `https://api.testmail.app/api/json?namespace=${namespace}&key=${apiKey}`,
+      `${apiUrl}?namespace=${namespace}&key=${apiKey}`,
       {
         to: params.to,
         subject: params.subject,
@@ -39,14 +45,16 @@ export const sendSignupWelcomeEmail = async (
   email: string,
   firstName?: string
 ): Promise<boolean> => {
+  const config = getConfig();
   const name = firstName || "User";
+  const appUrl = config.app.url;
 
   const html = `
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="UTF-8">
-        <title>Welcome to Clerk Auth Microservice</title>
+        <title>Welcome to ${config.app.name}</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f4f4f4; }
@@ -62,14 +70,14 @@ export const sendSignupWelcomeEmail = async (
             <div class="header">
               <h1>Welcome, ${name}!</h1>
             </div>
-            <p>Thank you for signing up with Clerk Auth Microservice.</p>
+            <p>Thank you for signing up with ${config.app.name}.</p>
             <p>Your account has been successfully created. You can now access all the features of our platform.</p>
             <p style="text-align: center; margin: 30px 0;">
-              <a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:5173"}/dashboard" class="button">Go to Dashboard</a>
+              <a href="${appUrl}/dashboard" class="button">Go to Dashboard</a>
             </p>
             <p>If you have any questions, feel free to contact our support team.</p>
             <div class="footer">
-              <p>&copy; 2024 Clerk Auth Microservice. All rights reserved.</p>
+              <p>&copy; 2024 ${config.app.name}. All rights reserved.</p>
             </div>
           </div>
         </div>

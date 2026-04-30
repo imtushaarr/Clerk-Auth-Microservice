@@ -12,7 +12,7 @@ export default function SignUpPage() {
           <p className="text-gray-600">Join our authentication microservice today</p>
         </div>
         <Suspense fallback={<div>Loading...</div>}>
-          <SignUp />
+          <SignUp redirectUrl="/dashboard" />
         </Suspense>
         <div className="mt-6 flex gap-3">
           <Link

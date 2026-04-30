@@ -7,7 +7,7 @@ import {
   validateObject,
   ValidationError,
 } from "@/lib/api-utils";
-import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { withRateLimit, getRateLimitConfigs } from "@/lib/rate-limit";
 import { handleCorsPreFlight, addCorsHeaders } from "@/lib/cors";
 
 /**
@@ -29,7 +29,8 @@ export async function POST(request: NextRequest) {
 
   try {
     // Rate limiting
-    const rateLimitResult = await withRateLimit(request, RATE_LIMITS.auth);
+    const { auth: authLimitConfig } = getRateLimitConfigs();
+    const rateLimitResult = await withRateLimit(request, authLimitConfig);
     if ("status" in rateLimitResult) {
       return rateLimitResult;
     }
