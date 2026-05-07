@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { auth as clerkAuth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 
-export type IngreyhrAuthRole = "company-admin" | "hr-admin" | "employee";
+export type IngreyhrAuthRole = "company-admin" | "hr-admin" | "employee" | "ingreyhr-admin";
 
 export interface IngreyhrAuthProfile {
   id: string;
@@ -32,6 +32,7 @@ const INGREYHR_ALLOWED_ROLES: IngreyhrAuthRole[] = [
   "company-admin",
   "hr-admin",
   "employee",
+  "ingreyhr-admin",
 ];
 
 const INGREYHR_TOKEN_SEPARATOR = ".";

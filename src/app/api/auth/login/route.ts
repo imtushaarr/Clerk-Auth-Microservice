@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
     const { auth: authLimitConfig } = getRateLimitConfigs();
     const rateLimitResult = await withRateLimit(request, authLimitConfig);
     if ("status" in rateLimitResult) {
-      return rateLimitResult;
+      const origin = request.headers.get("origin");
+      return addCorsHeaders(rateLimitResult, origin);
     }
 
     const body = await request.json();
