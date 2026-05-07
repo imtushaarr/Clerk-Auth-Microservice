@@ -21,6 +21,12 @@ export interface EnvConfig {
     webhookSecret: string;
   };
 
+  // IngreyHR API Authentication
+  ingreyhrAuth: {
+    signingKey: string;
+    tokenTtlSeconds: number;
+  };
+
   // Testmail Email Service
   testmail: {
     namespace: string;
@@ -97,9 +103,11 @@ class ConfigValidator {
 
     const config: EnvConfig = {
       app: {
-        name: this.getEnv("APP_NAME") || "Clerk Auth Microservice",
-        url: this.getEnv("NEXT_PUBLIC_APP_URL") || "http://localhost:5173",
-        port: this.getEnvNumber("PORT", 5173),
+        name: this.getEnv("INGREYHR_APP_NAME", this.getEnv("APP_NAME")) || "IngreyHR Auth Service",
+        url:
+          this.getEnv("INGREYHR_APP_URL", this.getEnv("NEXT_PUBLIC_APP_URL")) ||
+          "http://localhost:5176",
+        port: this.getEnvNumber("PORT", 5176),
         nodeEnv,
         isProduction,
       },
@@ -111,6 +119,12 @@ class ConfigValidator {
         webhookSecret: this.getEnv("CLERK_WEBHOOK_SECRET") || "",
       },
 
+      ingreyhrAuth: {
+        signingKey:
+          this.getEnv("INGREYHR_AUTH_SIGNING_KEY", this.getEnv("CLERK_SECRET_KEY")) || "",
+        tokenTtlSeconds: this.getEnvNumber("INGREYHR_AUTH_TOKEN_TTL_SECONDS", 3600),
+      },
+
       testmail: {
         namespace: this.getEnv("TESTMAIL_NAMESPACE") || "",
         apiKey: this.getEnv("TESTMAIL_API_KEY") || "",
@@ -120,10 +134,13 @@ class ConfigValidator {
 
       api: {
         corsOrigins: this.parseJsonArray(
-          process.env.CORS_ORIGINS,
+          process.env.INGREYHR_CORS_ORIGINS || process.env.CORS_ORIGINS,
           [
             "http://localhost:3000",
             "http://localhost:5173",
+            "http://localhost:5174",
+            "http://localhost:5175",
+            "http://localhost:5176",
             "http://localhost:8000",
           ]
         ),
@@ -164,6 +181,12 @@ class ConfigValidator {
     }
     if (!clerk.webhookSecret) {
       this.errors.push("❌ Clerk: CLERK_WEBHOOK_SECRET is required");
+    }
+
+    if (!config.ingreyhrAuth.signingKey) {
+      this.errors.push(
+        "⚠️  IngreyHR: INGREYHR_AUTH_SIGNING_KEY is recommended for token signing"
+      );
     }
 
     // Check Testmail configuration (only if enabled)

@@ -10,6 +10,8 @@ export async function GET() {
     environment: config.app.nodeEnv,
     port: config.app.port,
     url: config.app.url,
+    authRoles: ["company-admin", "hr-admin", "employee"],
+    apiOnly: true,
     timestamp: new Date().toISOString(),
   });
 }

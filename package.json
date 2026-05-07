@@ -1,17 +1,18 @@
 {
   "name": "clerk-auth-microservice",
   "version": "1.0.0",
-  "description": "Clerk authentication microservice with email notifications",
+  "description": "IngreyHR authentication API microservice with Clerk and Testmail integration",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 5173",
+    "dev": "next dev -p 5176",
     "build": "next build",
-    "start": "next start -p 5173",
+    "start": "next start -p 5176",
     "lint": "next lint"
   },
   "dependencies": {
     "@clerk/nextjs": "^4.29.0",
     "axios": "^1.6.0",
+    "ioredis": "^5.10.1",
     "next": "^14.0.0",
     "react": "^18",
     "react-dom": "^18",

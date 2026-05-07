@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server";
-import { auth } from "@clerk/nextjs";
 import {
   successResponse,
   errorResponse,
 } from "@/lib/api-utils";
 import { withRateLimit, getRateLimitConfigs } from "@/lib/rate-limit";
 import { handleCorsPreFlight, addCorsHeaders } from "@/lib/cors";
+import { ingreyhrResolveRequestAuth } from "@/lib/ingreyhr-auth";
 
 /**
  * GET /api/auth/profile
@@ -41,10 +41,9 @@ export async function GET(request: NextRequest) {
       return rateLimitResult;
     }
 
-    // Check authentication
-    const { userId, sessionId } = await auth();
+    const ingreyhrAuthContext = await ingreyhrResolveRequestAuth(request);
 
-    if (!userId || !sessionId) {
+    if (!ingreyhrAuthContext.authenticated || !ingreyhrAuthContext.profile) {
       const response = errorResponse(
         401,
         "Unauthorized - Please provide valid credentials",
@@ -55,14 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Mock profile data - in production, fetch from database
-    const profileData = {
-      id: userId,
-      email: `user_${userId}@example.com`,
-      firstName: "John",
-      lastName: "Doe",
-      sessionId,
-      createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-    };
+    const profileData = ingreyhrAuthContext.profile;
 
     const response = successResponse(profileData, "Profile retrieved successfully");
     const origin = request.headers.get("origin");

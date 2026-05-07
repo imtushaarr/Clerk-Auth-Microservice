@@ -8,6 +8,12 @@ import {
 } from "@/lib/api-utils";
 import { withRateLimit, getRateLimitConfigs } from "@/lib/rate-limit";
 import { handleCorsPreFlight, addCorsHeaders } from "@/lib/cors";
+import {
+  ingreyhrCreateAuthSession,
+  ingreyhrIsValidRole,
+} from "@/lib/ingreyhr-auth";
+import { ingreyhrSessionStore } from "@/lib/session-store";
+import { getConfig } from "@/lib/config";
 
 /**
  * POST /api/auth/login
@@ -55,6 +61,10 @@ export async function POST(request: NextRequest) {
         !value || typeof value !== "string" || value.length === 0
           ? { field: "password", message: "Password is required" }
           : null,
+      role: (value) =>
+        value && typeof value === "string" && !ingreyhrIsValidRole(value)
+          ? { field: "role", message: "Invalid role provided" }
+          : null,
     };
 
     const errors = validateObject(body, schema);
@@ -70,12 +80,35 @@ export async function POST(request: NextRequest) {
 
     // TODO: Integrate with Clerk API to authenticate user
     // For now, return mock response
-    const authData = {
-      id: `user_${Date.now()}`,
+    const ingreyhrAuthSession = ingreyhrCreateAuthSession({
       email: body.email,
-      sessionId: `sess_${Date.now()}`,
-      token: `jwt_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-      expiresIn: 3600,
+      firstName: body.firstName,
+      lastName: body.lastName,
+      role: body.role,
+    });
+
+    // Persist session to session store (Redis if configured)
+    try {
+      const cfg = getConfig();
+      await ingreyhrSessionStore.setSession(
+        ingreyhrAuthSession.sessionId,
+        ingreyhrAuthSession,
+        cfg.ingreyhrAuth.tokenTtlSeconds
+      );
+    } catch (e) {
+      console.warn("Warning: failed to persist session to store", e);
+    }
+
+    const authData = {
+      id: ingreyhrAuthSession.id,
+      email: ingreyhrAuthSession.email,
+      firstName: ingreyhrAuthSession.firstName,
+      lastName: ingreyhrAuthSession.lastName,
+      role: ingreyhrAuthSession.role,
+      sessionId: ingreyhrAuthSession.sessionId,
+      token: ingreyhrAuthSession.token,
+      expiresIn: ingreyhrAuthSession.expiresIn,
+      createdAt: ingreyhrAuthSession.createdAt,
     };
 
     const response = successResponse(authData, "Login successful");

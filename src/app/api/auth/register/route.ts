@@ -9,6 +9,10 @@ import {
 } from "@/lib/api-utils";
 import { withRateLimit, getRateLimitConfigs } from "@/lib/rate-limit";
 import { handleCorsPreFlight, addCorsHeaders } from "@/lib/cors";
+import {
+  ingreyhrCreateAuthSession,
+  ingreyhrIsValidRole,
+} from "@/lib/ingreyhr-auth";
 
 /**
  * POST /api/auth/register
@@ -58,6 +62,10 @@ export async function POST(request: NextRequest) {
         !value || typeof value !== "string" || value.trim().length < 2
           ? { field: "lastName", message: "Last name must be at least 2 characters" }
           : null,
+      role: (value) =>
+        value && typeof value === "string" && !ingreyhrIsValidRole(value)
+          ? { field: "role", message: "Invalid role provided" }
+          : null,
     };
 
     const errors = validateObject(body, schema);
@@ -74,12 +82,23 @@ export async function POST(request: NextRequest) {
 
     // TODO: Integrate with Clerk API to create user
     // For now, return success mock response
-    const userData = {
-      id: `user_${Date.now()}`,
+    const ingreyhrAuthSession = ingreyhrCreateAuthSession({
       email: body.email,
       firstName: body.firstName,
       lastName: body.lastName,
-      createdAt: new Date().toISOString(),
+      role: body.role,
+    });
+
+    const userData = {
+      id: ingreyhrAuthSession.id,
+      email: ingreyhrAuthSession.email,
+      firstName: ingreyhrAuthSession.firstName,
+      lastName: ingreyhrAuthSession.lastName,
+      role: ingreyhrAuthSession.role,
+      sessionId: ingreyhrAuthSession.sessionId,
+      token: ingreyhrAuthSession.token,
+      expiresIn: ingreyhrAuthSession.expiresIn,
+      createdAt: ingreyhrAuthSession.createdAt,
     };
 
     const response = successResponse(userData, "User registered successfully", 201);

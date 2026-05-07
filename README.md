@@ -1,15 +1,14 @@
-# Clerk Auth Microservice
+# IngreyHR Auth Microservice
 
-A modern authentication microservice built with Next.js and Clerk, featuring email notifications through testmail.app.
+A modern authentication API microservice built with Next.js and Clerk, featuring email notifications through testmail.app and role-aware auth tokens for the IngreyHR portals.
 
 ## Features
 
 - ✅ **Clerk Authentication** - Secure user authentication with Clerk
 - ✅ **Email Notifications** - Automatic welcome emails via testmail.app
 - ✅ **Webhook Integration** - Real-time events from Clerk
-- ✅ **User Dashboard** - Protected dashboard for authenticated users
-- ✅ **Sign In & Sign Up** - Beautiful authentication pages
 - ✅ **Public REST API** - RESTful endpoints for external integration
+- ✅ **Role-Based Auth** - Token sessions for company-admin, hr-admin, and employee portals
 - ✅ **Rate Limiting** - Built-in rate limiting for security
 - ✅ **CORS Support** - Cross-origin request handling
 - ✅ **Input Validation** - Comprehensive request validation
@@ -37,6 +36,10 @@ Before running this project, you need:
 
 3. **Node.js 18+** - Download from [https://nodejs.org](https://nodejs.org)
 
+4. **Optional - Redis** (recommended for production)
+  - Used for session store, token revocation blacklist, and shared rate-limit counters.
+  - Provide `REDIS_URL` or `INGREYHR_REDIS_URL` in your environment.
+
 ## Installation
 
 1. Clone the repository:
@@ -55,6 +58,9 @@ Create a `.env.local` file in the root directory with your credentials:
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
 CLERK_SECRET_KEY=your_clerk_secret_key
 CLERK_WEBHOOK_SECRET=your_clerk_webhook_secret
+INGREYHR_AUTH_SIGNING_KEY=your_signing_key
+INGREYHR_AUTH_TOKEN_TTL_SECONDS=3600
+INGREYHR_CORS_ORIGINS=["http://localhost:5173","http://localhost:5174","http://localhost:5175"]
 TESTMAIL_NAMESPACE=your_testmail_namespace
 TESTMAIL_API_KEY=your_testmail_api_key
 ```
@@ -76,7 +82,28 @@ TESTMAIL_API_KEY=your_testmail_api_key
 npm run dev
 ```
 
-The application will be available at `http://localhost:5173`
+The API will be available at `http://localhost:5173`
+
+On startup, the service prints readiness logs and the available auth endpoints. If configuration is invalid, startup fails with a clear error.
+
+## Redis & Session Store (recommended)
+
+This microservice supports an optional Redis backend for high-performance session storage and revocation lists. If `REDIS_URL` (or `INGREYHR_REDIS_URL`) is set and `ioredis` is installed, the service will use Redis; otherwise it falls back to an in-memory store (suitable for local dev only).
+
+Install Redis client (recommended for production):
+
+```bash
+npm install ioredis
+```
+
+The session helper is available at `src/lib/session-store.ts` and provides:
+- `setSession(sessionId, session, ttlSeconds)`
+- `getSession(sessionId)`
+- `revokeSession(sessionId, ttlSeconds)`
+- `isRevoked(sessionId)`
+- `incrCounter(key, windowSeconds)` (useful for rate limits)
+
+Set `REDIS_URL=redis://localhost:6379` in `.env.local` to enable.
 
 ### Build for Production
 
@@ -99,6 +126,16 @@ GET /api/auth/status
 ```
 Returns the current authentication status (requires authentication).
 
+### IngreyHR Integration
+
+The HRMS frontends authenticate with this service by sending `Authorization: Bearer <token>` to `/api/auth/login`, `/api/auth/register`, `/api/auth/profile`, `/api/auth/refresh`, `/api/auth/status`, and `/api/auth/logout`.
+
+Supported roles are:
+
+- `company-admin`
+- `hr-admin`
+- `employee`
+
 ### Clerk Webhooks
 ```
 POST /api/webhooks/clerk
@@ -107,12 +144,12 @@ Receives events from Clerk and triggers email notifications.
 
 ## User Flow
 
-1. **User Signs Up**: Navigates to `/sign-up`
-2. **Account Created**: Clerk creates the user account
+1. **User Signs Up**: Calls `POST /api/auth/register` from the HRMS portal
+2. **Account Created**: Auth service creates the role-aware session
 3. **Webhook Event**: Clerk sends a `user.created` event
 4. **Email Sent**: Welcome email is sent via testmail.app
-5. **User Signs In**: User can sign in at `/sign-in`
-6. **Dashboard Access**: Authenticated users can access `/dashboard`
+5. **User Signs In**: HRMS portal calls `POST /api/auth/login`
+6. **Dashboard Access**: HRMS portals use the returned bearer token for protected API calls
 
 ## Project Structure
 
@@ -125,19 +162,15 @@ src/
 │   │   ├── health/route.ts           # Health check endpoint
 │   │   └── webhooks/
 │   │       └── clerk/route.ts        # Clerk webhook handler
-│   ├── sign-in/
-│   │   └── [[...sign-in]]/page.tsx   # Sign in page
-│   ├── sign-up/
-│   │   └── [[...sign-up]]/page.tsx   # Sign up page
-│   ├── dashboard/
-│   │   └── page.tsx                  # Protected dashboard
-│   ├── page.tsx                      # Home page
-│   ├── layout.tsx                    # Root layout
-│   └── globals.css                   # Global styles
 ├── lib/
-│   └── email.ts                      # Email notification service
-└── middleware/
-    └── auth.ts                       # Auth middleware
+│   ├── api-utils.ts                 # Response helpers and validation
+│   ├── config.ts                    # Environment configuration
+│   ├── cors.ts                      # CORS and security headers
+│   ├── email.ts                     # Email notification service
+│   ├── ingreyhr-auth.ts             # IngreyHR auth token logic
+│   ├── openapi-spec.ts              # OpenAPI specification
+│   └── rate-limit.ts                # Rate limiting helpers
+└── middleware.ts                    # Public route handling
 
 ```
 
@@ -201,7 +234,7 @@ Ensure:
 
 ## 🔌 Public API Integration
 
-This microservice exposes a comprehensive RESTful API for external integration with other services and applications.
+This microservice exposes a comprehensive RESTful API for external integration with the IngreyHR portals.
 
 ### Quick API Examples
 

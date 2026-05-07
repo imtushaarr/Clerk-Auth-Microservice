@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import { auth } from "@clerk/nextjs";
 import {
   successResponse,
   errorResponse,
@@ -8,6 +7,10 @@ import {
 } from "@/lib/api-utils";
 import { withRateLimit, getRateLimitConfigs } from "@/lib/rate-limit";
 import { handleCorsPreFlight, addCorsHeaders } from "@/lib/cors";
+import {
+  ingreyhrCreateAuthSession,
+  ingreyhrResolveRequestAuth,
+} from "@/lib/ingreyhr-auth";
 
 /**
  * POST /api/auth/refresh
@@ -58,10 +61,9 @@ export async function POST(request: NextRequest) {
       return addCorsHeaders(response, origin);
     }
 
-    // Check authentication context
-    const { userId, sessionId } = await auth();
+    const ingreyhrAuthContext = await ingreyhrResolveRequestAuth(request);
 
-    if (!userId) {
+    if (!ingreyhrAuthContext.authenticated || !ingreyhrAuthContext.profile) {
       const response = errorResponse(
         401,
         "Unauthorized - Session expired or invalid",
@@ -73,11 +75,19 @@ export async function POST(request: NextRequest) {
 
     // TODO: Integrate with Clerk API to refresh token
     // For now, return mock response
+    const ingreyhrRefreshedSession = ingreyhrCreateAuthSession({
+      email: ingreyhrAuthContext.profile.email,
+      firstName: ingreyhrAuthContext.profile.firstName,
+      lastName: ingreyhrAuthContext.profile.lastName,
+      role: ingreyhrAuthContext.profile.role,
+    });
+
     const tokenData = {
-      token: `jwt_${Date.now()}_refreshed_${Math.random().toString(36).substring(7)}`,
-      expiresIn: 3600,
-      refreshToken: `refresh_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-      sessionId,
+      token: ingreyhrRefreshedSession.token,
+      expiresIn: ingreyhrRefreshedSession.expiresIn,
+      refreshToken: `ingreyhr_refresh_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+      sessionId: ingreyhrRefreshedSession.sessionId,
+      user: ingreyhrRefreshedSession,
     };
 
     const response = successResponse(tokenData, "Token refreshed successfully");
